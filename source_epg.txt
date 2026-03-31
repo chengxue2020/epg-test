@@ -1,0 +1,104 @@
+timeframe=96
+
+# 源1：明珠台和BBC频道
+https://epg.iill.top/epg.xml.gz
+明珠台
+BBC Earth
+BBC Lifestyle
+BBC News
+BBC World News
+
+# 源2：央视频道
+https://epg.112114.xyz/pp.xml
+CCTV1
+CCTV2
+CCTV3
+CCTV4
+CCTV5
+CCTV5+
+CCTV6
+CCTV7
+CCTV8
+CCTV9
+CCTV10
+CCTV11
+CCTV12
+CCTV13
+CCTV14
+CCTV15
+CCTV16
+CCTV17
+CCTV4K
+CGTN
+CGTN Documentary
+
+# 源3：卫视频道
+https://epg.51zjy.top/epg.xml
+BeijingTV
+DragonTV
+HunanTV
+JiangsuTV
+ZhejiangTV
+GuangdongTV
+ShenzhenTV
+TianjinTV
+ChongqingTV
+HeilongjiangTV
+LiaoningTV
+ShandongTV
+HenanTV
+HebeiTV
+HubeiTV
+JiangxiTV
+ShanxiTV
+ShaanxiTV
+SichuanTV
+GuizhouTV
+YunnanTV
+GansuTV
+QinghaiTV
+JilinTV
+FujianTV
+GuangxiTV
+NingxiaTV
+XinjiangTV
+InnerMongoliaTV
+HainanTV
+MacauTV
+
+# 源4：国际频道
+https://epg.fuyukai.workers.dev/epg.xml
+HBO
+HBO2
+HBOSignature
+HBOFamily
+HBOHits
+Cinemax
+NationalGeographic
+Discovery
+AnimalPlanet
+CNN
+BBCWorld
+BBCEarth
+BBCNews
+NHKWorld
+AlJazeera
+KBSWorld
+ArirangTV
+TVB
+TVB8
+TVBJade
+ATV
+NowTV
+CableTV
+ESPN
+FOXSports
+FOXNews
+Bloomberg
+CNBC
+SkyNews
+Euronews
+France24
+DeutscheWelle
+RussiaToday
+TRTWorld
