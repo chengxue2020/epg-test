@@ -24,25 +24,25 @@ http://e.erw.cc/e.xml.gz
 5
 
 https://epg.112114.xyz/pp.xml
-CCTV1	中央一台
-CCTV2	中央二台
-CCTV3	中央三台
-CCTV4	中央四台
-CCTV5	中央五台
-CCTV5+	中央五加
-CCTV6	中央六台
-CCTV7	中央七台
-CCTV8	中央八台
-CCTV9	中央九台
-CCTV10	中央十台
-CCTV11	中央十一台
-CCTV12	中央十二台
-CCTV13	中央十三台
-CCTV14	中央十四台
-CCTV15	中央十五台
-CCTV16	中央十六台
-CCTV17	中央十七台
-CCTV4K	中央四K
+CCTV1
+CCTV2
+CCTV3
+CCTV4
+CCTV5
+CCTV5+
+CCTV6
+CCTV7
+CCTV8
+CCTV9
+CCTV10
+CCTV11
+CCTV12
+CCTV13
+CCTV14
+CCTV15
+CCTV16
+CCTV17
+CCTV4K
 CGTN
 CGTN Documentary
 BeijingTV	北京卫视
