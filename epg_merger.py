@@ -3,6 +3,7 @@
 """
 EPG Merger Script - 合并多个EPG源的频道节目信息
 支持 .xml 和 .xml.gz 格式
+支持在 source_epg.txt 中直接定义频道别名映射
 """
 
 import requests
@@ -46,16 +47,7 @@ def format_size(bytes_size: int) -> str:
 
 
 def compress_gzip(input_file: str, output_file: str) -> bool:
-    """
-    压缩文件为gzip格式
-    
-    Args:
-        input_file: 输入文件路径
-        output_file: 输出gzip文件路径
-        
-    Returns:
-        成功返回True，失败返回False
-    """
+    """压缩文件为gzip格式"""
     try:
         with open(input_file, 'rb') as f_in:
             with gzip.open(output_file, 'wb', compresslevel=9) as f_out:
@@ -73,20 +65,28 @@ def compress_gzip(input_file: str, output_file: str) -> bool:
 
 
 # ==================== 配置解析 ====================
-def parse_source(source_file: str) -> Tuple[Dict[str, List[str]], int]:
+def parse_source(source_file: str) -> Tuple[Dict[str, List[Tuple[str, Optional[str]]]], int]:
     """
-    解析EPG源配置文件
+    解析EPG源配置文件，支持频道别名映射
     
     文件格式示例：
     timeframe=96
     
     https://epg.iill.top/epg.xml.gz
-    明珠台
+    1	CCTV1          # 带别名映射，将源中的"1"映射为"CCTV1"
+    2	CCTV2          # 带别名映射，将源中的"2"映射为"CCTV2"
+    明珠台            # 不带映射，直接使用"明珠台"
     BBC Earth
+    BBC Lifestyle
     
-    https://epg.112114.xyz/pp.xml
-    CCTV1
-    CCTV5
+    http://e.erw.cc/e.xml.gz
+    1                # 不带映射，直接使用"1"
+    2
+    3
+    
+    Returns:
+        (数据源字典, 时间范围)
+        数据源字典格式: {URL: [(原频道ID, 新频道ID或None), ...]}
     """
     try:
         with open(source_file, 'r', encoding='utf-8') as source:
@@ -110,8 +110,9 @@ def parse_source(source_file: str) -> Tuple[Dict[str, List[str]], int]:
             print()
             
             # 解析源和频道
-            data_source: Dict[str, List[str]] = {}
+            data_source: Dict[str, List[Tuple[str, Optional[str]]]] = {}
             current_source = ''
+            alias_map_local: Dict[str, str] = {}  # 当前源的本地别名映射
             
             for line_num, line in enumerate(lines[1:], 2):  # 跳过第一行
                 # 移除注释和空白
@@ -121,13 +122,36 @@ def parse_source(source_file: str) -> Tuple[Dict[str, List[str]], int]:
                 
                 # 判断是URL还是频道ID
                 if line.startswith(('http://', 'https://')):
+                    # 遇到新URL，保存之前的别名映射
+                    if current_source and alias_map_local:
+                        # 将别名映射信息保存到数据源中
+                        # 这里我们已经在添加频道时处理了，不需要额外保存
+                        pass
+                    
                     current_source = line
                     if current_source not in data_source:
                         data_source[current_source] = []
+                    alias_map_local = {}
                 elif current_source:
-                    channel_id = line
-                    if channel_id not in data_source[current_source]:
-                        data_source[current_source].append(channel_id)
+                    # 解析频道ID（可能包含别名映射）
+                    if '\t' in line:
+                        # 格式: 原频道ID[Tab]新频道ID
+                        parts = line.split('\t')
+                        if len(parts) >= 2:
+                            old_id = parts[0].strip()
+                            new_id = parts[1].strip()
+                            if old_id and new_id:
+                                data_source[current_source].append((old_id, new_id))
+                                print(f'  ✓ 映射: "{old_id}" → "{new_id}"')
+                            else:
+                                print(f'  ⚠ 第{line_num}行格式错误: {line}')
+                        else:
+                            print(f'  ⚠ 第{line_num}行格式错误: {line}')
+                    else:
+                        # 格式: 直接使用频道ID（无映射）
+                        channel_id = line
+                        if channel_id:
+                            data_source[current_source].append((channel_id, None))
             
             # 验证是否有数据
             if not data_source:
@@ -250,13 +274,23 @@ def convert_date(epg_format_date: str) -> Optional[datetime]:
 # ==================== EPG处理 ====================
 def process_epg_source(
     file_path: str,
-    channels_to_process: List[str],
+    channels_to_process: List[Tuple[str, Optional[str]]],
     channel_dict: Dict[str, ET.Element],
     program_dict: Dict[Tuple[str, str], ET.Element],
     start_utc: datetime,
     time_frame: int
 ) -> None:
-    """处理EPG源文件，提取频道和节目信息"""
+    """
+    处理EPG源文件，提取频道和节目信息
+    
+    Args:
+        file_path: EPG文件路径
+        channels_to_process: 需要处理的频道列表，每个元素为 (原ID, 新ID或None)
+        channel_dict: 频道字典
+        program_dict: 节目字典
+        start_utc: 起始时间（UTC）
+        time_frame: 时间范围（小时）
+    """
     # 处理gzip压缩文件
     if file_path.endswith('.gz'):
         dir_path = os.path.dirname(file_path)
@@ -283,24 +317,48 @@ def process_epg_source(
         print(f'    ✗ 解析失败: {e}')
         return
     
-    # 提取频道（去重）
+    # 创建原ID到新ID的映射
+    id_mapping = {old_id: new_id for old_id, new_id in channels_to_process if new_id}
+    target_ids = {old_id for old_id, _ in channels_to_process}
+    
+    # 提取频道（去重并应用别名）
     channels_found = 0
-    channels_set = set(channels_to_process)
-    
     for channel in tree.findall('channel'):
-        channel_id = channel.attrib.get('id', '')
-        if channel_id in channels_set and channel_id not in channel_dict:
-            channel_dict[channel_id] = channel
-            channels_found += 1
+        original_id = channel.attrib.get('id', '')
+        if original_id in target_ids:
+            # 确定最终使用的频道ID
+            final_id = id_mapping.get(original_id, original_id)
+            
+            # 如果最终ID不在字典中，添加
+            if final_id not in channel_dict:
+                # 创建频道的副本并修改ID
+                new_channel = ET.Element('channel', id=final_id)
+                # 复制所有子元素
+                for child in channel:
+                    new_channel.append(child)
+                # 复制文本和属性
+                new_channel.text = channel.text
+                new_channel.tail = channel.tail
+                for key, value in channel.attrib.items():
+                    if key != 'id':
+                        new_channel.set(key, value)
+                
+                channel_dict[final_id] = new_channel
+                channels_found += 1
+                if original_id != final_id:
+                    print(f'    📝 频道重命名: "{original_id}" → "{final_id}"')
     
-    # 提取节目（去重）
+    # 提取节目（去重并应用别名）
     programs_found = 0
     programs_total = 0
     
     for programme in tree.findall('programme'):
-        channel_id = programme.attrib.get('channel', '')
-        if channel_id in channels_set:
+        original_channel = programme.attrib.get('channel', '')
+        if original_channel in target_ids:
             programs_total += 1
+            
+            # 确定最终使用的频道ID
+            final_channel = id_mapping.get(original_channel, original_channel)
             
             program_start = convert_date(programme.attrib.get('start', ''))
             program_stop = convert_date(programme.attrib.get('stop', ''))
@@ -310,23 +368,55 @@ def process_epg_source(
                 stop_delta = (program_stop - start_utc).total_seconds() / 3600
                 
                 if start_delta < time_frame and stop_delta > 0:
-                    key = (channel_id, programme.attrib.get('start', ''))
+                    # 使用最终频道ID和开始时间作为唯一键
+                    key = (final_channel, programme.attrib.get('start', ''))
                     if key not in program_dict:
-                        program_dict[key] = programme
+                        # 创建节目的副本并修改channel属性
+                        new_programme = ET.Element('programme')
+                        for child in programme:
+                            new_programme.append(child)
+                        new_programme.text = programme.text
+                        new_programme.tail = programme.tail
+                        # 复制所有属性，但修改channel
+                        for key_attr, value in programme.attrib.items():
+                            if key_attr == 'channel':
+                                new_programme.set('channel', final_channel)
+                            else:
+                                new_programme.set(key_attr, value)
+                        
+                        program_dict[key] = new_programme
                         programs_found += 1
             else:
-                key = (channel_id, programme.attrib.get('start', ''))
+                # 时间格式异常，仍然添加
+                key = (final_channel, programme.attrib.get('start', ''))
                 if key not in program_dict:
-                    program_dict[key] = programme
+                    new_programme = ET.Element('programme')
+                    for child in programme:
+                        new_programme.append(child)
+                    new_programme.text = programme.text
+                    new_programme.tail = programme.tail
+                    for key_attr, value in programme.attrib.items():
+                        if key_attr == 'channel':
+                            new_programme.set('channel', final_channel)
+                        else:
+                            new_programme.set(key_attr, value)
+                    
+                    program_dict[key] = new_programme
                     programs_found += 1
     
     # 输出统计
-    missing_channels = channels_set - set(channel_dict.keys())
+    found_ids = set()
+    for old_id, _ in channels_to_process:
+        final_id = id_mapping.get(old_id, old_id)
+        if final_id in channel_dict:
+            found_ids.add(old_id)
+    
+    missing_channels = target_ids - found_ids
     if missing_channels:
         for channel in missing_channels:
             print(f'    ⚠ 未找到频道: {channel}')
     
-    print(f'    📺 新增频道: {channels_found}/{len(channels_set)}')
+    print(f'    📺 新增频道: {channels_found}/{len(target_ids)}')
     print(f'    📅 新增节目: {programs_found}/{programs_total}')
 
 
@@ -337,7 +427,7 @@ def main() -> None:
     start_beijing = start_utc.astimezone(BEIJING_TZ)
     
     print_separator('=')
-    print('EPG Merger v2.0')
+    print('EPG Merger v2.0 (with Inline Alias Support)')
     print_separator('=')
     print(f'开始时间: {start_beijing.strftime("%Y-%m-%d %H:%M:%S")} (北京时间)')
     print()
@@ -354,6 +444,10 @@ def main() -> None:
     for url, channels in sources.items():
         print(f'  - {url}')
         print(f'    频道数量: {len(channels)}')
+        # 显示映射数量
+        mapping_count = sum(1 for _, new_id in channels if new_id)
+        if mapping_count > 0:
+            print(f'    别名映射: {mapping_count} 个')
     print()
     
     # 准备临时目录
@@ -381,7 +475,11 @@ def main() -> None:
         print(f'   请求频道: {len(channel_list)} 个')
         
         # 过滤已找到的频道
-        channels_to_find = [ch for ch in channel_list if ch not in channel_dict]
+        channels_to_find = []
+        for old_id, new_id in channel_list:
+            final_id = new_id if new_id else old_id
+            if final_id not in channel_dict:
+                channels_to_find.append((old_id, new_id))
         
         if not channels_to_find:
             print(f'   ⏭ 跳过: 所有频道已找到')
