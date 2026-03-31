@@ -4,6 +4,7 @@
 EPG Merger Script - 合并多个EPG源的频道节目信息
 支持 .xml 和 .xml.gz 格式
 支持在 source_epg.txt 中直接定义频道别名映射
+支持智能排序（数字-字母-汉字，不区分大小写）
 """
 
 import requests
@@ -12,9 +13,17 @@ import xml.etree.ElementTree as ET
 import os
 import sys
 import time
+import re
 from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Tuple, Optional, Set
 import hashlib
+
+# 尝试导入拼音转换库（用于中文排序）
+try:
+    from pypinyin import pinyin, Style
+    HAS_PYPINYIN = True
+except ImportError:
+    HAS_PYPINYIN = False
 
 # ==================== 配置常量 ====================
 SOURCE_FILE = 'source_epg.txt'          # EPG源配置文件
@@ -62,6 +71,97 @@ def compress_gzip(input_file: str, output_file: str) -> bool:
     except Exception as e:
         print(f'  ✗ 压缩失败: {e}')
         return False
+
+
+# ==================== 智能排序函数 ====================
+def get_sort_key(channel_name: str) -> Tuple[int, str, str]:
+    """
+    生成排序键，实现：数字 → 字母 → 汉字 的排序
+    
+    排序规则：
+    1. 类型优先级：数字(0) < 字母(1) < 汉字(2)
+    2. 同类型内：
+       - 数字按数值排序
+       - 字母不区分大小写排序
+       - 汉字按拼音排序（如果安装了pypinyin）
+    
+    Args:
+        channel_name: 频道名称
+        
+    Returns:
+        排序用的元组 (类型优先级, 排序字符串, 原始字符串)
+    """
+    if not channel_name:
+        return (3, '', '')
+    
+    # 判断第一个字符的类型
+    first_char = channel_name[0]
+    
+    # 数字
+    if first_char.isdigit():
+        # 提取开头的数字
+        match = re.match(r'^(\d+)', channel_name)
+        if match:
+            num = int(match.group(1))
+            # 数字部分用数值排序，剩余部分作为辅助排序（转小写）
+            remaining = channel_name[len(match.group(1)):].lower()
+            return (0, f"{num:010d}", remaining)
+        return (0, channel_name.lower(), channel_name)
+    
+    # 英文字母（包括大小写）
+    elif first_char.isalpha() and first_char.isascii():
+        # 统一转换为小写进行排序（不区分大小写）
+        return (1, channel_name.lower(), channel_name)
+    
+    # 汉字
+    elif '\u4e00' <= first_char <= '\u9fff':
+        if HAS_PYPINYIN:
+            # 使用拼音排序（拼音不区分大小写）
+            try:
+                pinyin_list = pinyin(channel_name, style=Style.NORMAL)
+                pinyin_str = ''.join([p[0].lower() for p in pinyin_list])
+                return (2, pinyin_str, channel_name)
+            except:
+                # 拼音转换失败，使用原始字符串
+                return (2, channel_name, channel_name)
+        else:
+            # 没有拼音库，使用原始字符串
+            return (2, channel_name, channel_name)
+    
+    # 其他字符（符号等）
+    else:
+        return (3, channel_name.lower(), channel_name)
+
+
+def sort_channels(channels: List[ET.Element]) -> List[ET.Element]:
+    """
+    智能排序频道列表
+    
+    排序规则：数字 → 字母 → 汉字
+    - 数字：按数值大小排序（1, 2, 10, 100...）
+    - 字母：按字母顺序排序（不区分大小写，A和a视为相同）
+    - 汉字：按拼音首字母排序（需要pypinyin库）
+    """
+    def channel_key(channel):
+        channel_id = channel.attrib.get('id', '')
+        return get_sort_key(channel_id)
+    
+    return sorted(channels, key=channel_key)
+
+
+def sort_programmes(programmes: List[ET.Element]) -> List[ET.Element]:
+    """
+    智能排序节目列表
+    
+    先按频道ID排序（不区分大小写），再按开始时间排序
+    """
+    def programme_key(programme):
+        channel_id = programme.attrib.get('channel', '')
+        start_time = programme.attrib.get('start', '')
+        # 频道ID使用不区分大小写的排序键
+        return (get_sort_key(channel_id), start_time)
+    
+    return sorted(programmes, key=programme_key)
 
 
 # ==================== 配置解析 ====================
@@ -112,9 +212,8 @@ def parse_source(source_file: str) -> Tuple[Dict[str, List[Tuple[str, Optional[s
             # 解析源和频道
             data_source: Dict[str, List[Tuple[str, Optional[str]]]] = {}
             current_source = ''
-            alias_map_local: Dict[str, str] = {}  # 当前源的本地别名映射
             
-            for line_num, line in enumerate(lines[1:], 2):  # 跳过第一行
+            for line_num, line in enumerate(lines[1:], 2):
                 # 移除注释和空白
                 line = line.partition('#')[0].strip()
                 if not line:
@@ -122,20 +221,12 @@ def parse_source(source_file: str) -> Tuple[Dict[str, List[Tuple[str, Optional[s
                 
                 # 判断是URL还是频道ID
                 if line.startswith(('http://', 'https://')):
-                    # 遇到新URL，保存之前的别名映射
-                    if current_source and alias_map_local:
-                        # 将别名映射信息保存到数据源中
-                        # 这里我们已经在添加频道时处理了，不需要额外保存
-                        pass
-                    
                     current_source = line
                     if current_source not in data_source:
                         data_source[current_source] = []
-                    alias_map_local = {}
                 elif current_source:
-                    # 解析频道ID（可能包含别名映射）
+                    # 检查是否包含Tab键（别名映射）
                     if '\t' in line:
-                        # 格式: 原频道ID[Tab]新频道ID
                         parts = line.split('\t')
                         if len(parts) >= 2:
                             old_id = parts[0].strip()
@@ -148,7 +239,7 @@ def parse_source(source_file: str) -> Tuple[Dict[str, List[Tuple[str, Optional[s
                         else:
                             print(f'  ⚠ 第{line_num}行格式错误: {line}')
                     else:
-                        # 格式: 直接使用频道ID（无映射）
+                        # 直接使用频道ID（无映射）
                         channel_id = line
                         if channel_id:
                             data_source[current_source].append((channel_id, None))
@@ -427,9 +518,17 @@ def main() -> None:
     start_beijing = start_utc.astimezone(BEIJING_TZ)
     
     print_separator('=')
-    print('EPG Merger v2.0 (with Inline Alias Support)')
+    print('EPG Merger v2.0 (with Smart Sorting)')
     print_separator('=')
     print(f'开始时间: {start_beijing.strftime("%Y-%m-%d %H:%M:%S")} (北京时间)')
+    print()
+    
+    # 显示拼音库状态
+    if HAS_PYPINYIN:
+        print('✓ 已加载拼音库，支持中文拼音排序')
+    else:
+        print('⚠ 未安装pypinyin库，中文将按Unicode排序')
+        print('  安装方法: pip install pypinyin')
     print()
     
     # 解析配置
@@ -444,7 +543,6 @@ def main() -> None:
     for url, channels in sources.items():
         print(f'  - {url}')
         print(f'    频道数量: {len(channels)}')
-        # 显示映射数量
         mapping_count = sum(1 for _, new_id in channels if new_id)
         if mapping_count > 0:
             print(f'    别名映射: {mapping_count} 个')
@@ -520,16 +618,14 @@ def main() -> None:
     comment = ET.Comment(f' Generated by EPG Merger on {start_beijing.strftime("%Y-%m-%d %H:%M:%S")} Beijing Time ')
     root.append(comment)
     
-    # 排序频道和节目
-    channels_sorted = sorted(channel_dict.values(), key=lambda c: c.attrib.get('id', '').lower())
-    programs_sorted = sorted(
-        program_dict.values(),
-        key=lambda p: (p.attrib.get('channel', '').lower(), p.attrib.get('start', ''))
-    )
+    # 使用智能排序（不区分大小写）
+    print('🔤 应用智能排序（数字-字母-汉字，不区分大小写）...')
+    channels_sorted = sort_channels(list(channel_dict.values()))
+    programmes_sorted = sort_programmes(list(program_dict.values()))
     
     for channel in channels_sorted:
         root.append(channel)
-    for program in programs_sorted:
+    for program in programmes_sorted:
         root.append(program)
     
     # 写入XML文件
@@ -541,7 +637,7 @@ def main() -> None:
     print(f'✓ XML文件: {OUTPUT_XML}')
     print(f'  大小: {format_size(xml_size)}')
     print(f'  频道数: {len(channels_sorted)}')
-    print(f'  节目数: {len(programs_sorted)}')
+    print(f'  节目数: {len(programmes_sorted)}')
     
     # 压缩为GZIP文件
     print(f'\n🗜️ 压缩为GZIP格式...')
