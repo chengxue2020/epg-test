@@ -1,4 +1,4 @@
-# EPG Merger
+# Guide Merger
 
 自动合并多个EPG源的频道节目信息
 
@@ -10,7 +10,7 @@
 
 ✅ 支持压缩文件 - 自动解压 .gz 格式
 
-✅ 源级别别名映射 - 在 source_epg.txt 中直接定义映射
+✅ 源级别别名映射 - 在 source_guide.txt 中直接定义映射
 
 ✅ 智能排序 - 数字 → 字母（不区分大小写） → 汉字（拼音）
 
@@ -28,8 +28,71 @@
 
 ## 使用方法
 
-1. 编辑 `source_epg.txt` 配置文件
-2. 运行脚本：`python epg_merger.py`
-3. 生成的 `epg.xml` 即为合并后的EPG文件
+1. 编辑 `source_guide.txt` 配置文件
+2. 运行脚本：`python guide_merger.py`
+3. 生成的 `guide.xml` 即为合并后的EPG文件
 
 ## 配置文件格式
+
+###### `source_guide.txt` 配置示例
+
+Timeframe支持的时区格式
+
+| 格式   | 示例         | 说明         |
+| ------ | ------------ | ------------ |
+| ±HHMM  | +0800, -0500 | 标准时区格式 |
+| ±HH    | +8, -5       | 简写格式     |
+| UTC±HH | UTC+8, UTC-5 | 带UTC前缀    |
+| GMT±HH | GMT+8, GMT-5 | 带GMT前缀    |
+
+###### 实际效果示例	
+
+```
+timeframe=48 配置
+    过去24小时              未来24小时
+←─────────────────┬─────────────────→
+4月2日 12:00      4月3日 12:00      4月4日 12:00
+     ↑                 ↑                 ↑
+   开始边界          当前时间          结束边界		
+		
+```
+
+
+​		
+
+
+```
+timeframe=96
+
+# 源1：UTC时间的源（需要转换为北京时间）
+https://example.com/guide.xml
+TimeZone=+0000
+1	CCTV1
+2	CCTV2
+明珠台
+BBC Earth
+
+# 源2：已经是北京时间的源（不需要转换）
+https://example.com/guide.xml
+TimeZone=+0800
+CCTV1
+CCTV2
+CCTV3
+CCTV4
+
+# 源3：美国东部时间的源
+https://example.com/guide.xml
+TimeZone=-0500
+HBO
+CNN
+FOX
+
+# 源4：不指定时区，默认使用北京时间
+https://example.com/guide.xml
+CCTV1
+CCTV2
+CCTV3
+```
+
+
+

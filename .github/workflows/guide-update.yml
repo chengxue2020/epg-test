@@ -1,17 +1,17 @@
-name: EPG Update
+name: Guide Update
 
 on:
   schedule:
-  # 每天执行2次（北京时间 0:45点, 12:45点）
-    - cron: '30 0,12 * * *'
+  # 每天执行3次（北京时间 0:45点,8:45点,16:45点）
+    - cron: '45 0,8,16 * * *'
   workflow_dispatch:
   push:
     branches: [ main, master ]
     paths:
-      - 'source_epg.txt'
+      - 'source_guide.txt'
 
 jobs:
-  update-epg:
+  update-guide:
     runs-on: ubuntu-latest
     
     permissions:
@@ -34,9 +34,9 @@ jobs:
         python -m pip install --upgrade pip
         pip install requests pypinyin
     
-    - name: Run EPG merger
+    - name: Run guide merger
       run: |
-        python epg_merger.py
+        python guide_merger.py
     
     - name: Check for changes
       id: check_changes
@@ -55,6 +55,6 @@ jobs:
       run: |
         git config --global user.name 'github-actions[bot]'
         git config --global user.email '65702849+github-actions[bot]@users.noreply.github.com'
-        git add epg.xml epg.xml.gz
-        git commit -m "Auto update EPG data - $(date '+%Y-%m-%d %H:%M:%S')"
+        git add guide.xml guide.xml.gz
+        git commit -m "Auto update guide data - $(date '+%Y-%m-%d %H:%M:%S')"
         git push origin HEAD:${GITHUB_REF#refs/heads/}
