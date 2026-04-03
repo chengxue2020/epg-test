@@ -1923,6 +1923,7 @@ cgtn	CGTN(英)
 newsworld-ita	Newsworld (It)
 france-24-en	France 24 English(A)
 
+https://raw.githubusercontent.com/zzq1234567890/epg/refs/heads/main/swepg.xml.gz
 cctv1	CCTV-1(swepg)
 cctv10	CCTV-10(swepg)
 cctv11	CCTV-11(swepg)
