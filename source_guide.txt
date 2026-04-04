@@ -36,7 +36,7 @@ CCTV-卫生健康
 CCTV-央视台球
 CCTV-央视文化精品
 CCTV-央视足球
-CGTN英语	CGTN
+CGTN英语	CGTN(中)
 CGTN英文记录
 CGTN阿拉伯语
 CGTN俄语
@@ -1055,8 +1055,7 @@ https://epg.pw/xmltv/epg_US.xml
 464937	CBS Sports Network HD(US)
 464994	CBS Streaming SD East feed(US)
 464830	CBS West(US)
-465326	CCTV4-China Central TV(US)
-464760	CentroAméricaTV(US)
+464760	Centro América TV(US)
 464982	CFN CATHOLIC FAITH NETWORK(US)
 464946	Charming China(US)
 464798	Cheddar(US)
@@ -1937,13 +1936,10 @@ CCTV-1香港
 cctv2	CCTV-2(swepg)
 cctv3	CCTV-3(swepg)
  CCCTV4	CCTV-4(swepg)
-CCTV4_HD	CCTV-4 HD
 CCTV-4	CCTV-4(英)
 cctv4k	CCTV-4k(swepg)
 CCTV4美洲	CCTV-4美洲
-CCTV-4美洲频道
 CCTV4欧洲	CCTV-4欧洲
-CCTV-4欧洲频道
 CCTV-4香港
 cctv4亚洲	CCTV-4亚洲
 cctv5	CCTV-5(swepg)
@@ -1967,7 +1963,6 @@ cctv女性时尚	CCTV-女性时尚(swepg)
 cctv世界地理	CCTV-世界地理(swepg)
 cctv台球	CCTV-台球
 cctv卫生健康	CCTV-卫生健康(swepg)
-cctv文化精品	CCTV-文化精品
 中学生	CCTV-中学生
 中央电视台新闻频道香港	CCTV-13香港
 中央电视台综合频道 (港澳版) (免费)	CCTV-1 (港澳版)
