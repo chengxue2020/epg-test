@@ -1,6 +1,12 @@
 name: Guide Update
 
 on:
+  # 添加 push 触发
+  push:
+  #排除 guide.xml 和 guide.xml.gz 触发
+    paths-ignore:
+      - 'guide.xml'
+      - 'guide.xml.gz'
   schedule:
     # 每天 0:40, 8:40, 16:40 运行（UTC时间）
     # 北京时间 = UTC+8，对应 8:40, 16:40, 0:40（次日）
