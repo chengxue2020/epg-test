@@ -2748,8 +2748,6 @@ tvN	tvN(swepg)
 tvN HD	tvN HD(中)
 tvN_HD	tvN HD(英)
 tvN Movies	tvN Movies(英)
-tvN_Movies_HD	tvN Movies HD(swepg1)
-tvN Movies HD	tvN Movies HD(swepg2)
 tvN香港
 tvN有线
 tvOne

@@ -7,6 +7,7 @@ EPG Merger Script - 合并多个EPG源的频道节目信息
 支持智能排序（按display-name，数字-字母-汉字，不区分大小写）
 支持每个EPG源单独设置时区转换（可选，不设置则保持原时区）
 支持前后双向时间范围（包含过去和未来的节目）
+可配置是否修改 channel id 和 display-name
 """
 
 import requests
@@ -19,6 +20,7 @@ import re
 from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Tuple, Optional, Set
 import hashlib
+import copy
 
 # 尝试导入Cloudflare绕过库
 try:
@@ -48,6 +50,15 @@ MAX_RETRIES = 3                          # 最大重试次数
 DOWNLOAD_TIMEOUT = 30                    # 下载超时（秒）
 CHUNK_SIZE = 131072                      # 下载块大小（128KB）
 USE_CLOUDSCRAPER = True                  # 是否使用cloudscraper绕过CF
+
+# ==================== 别名映射配置 ====================
+# True: 修改channel id
+# False: 不修改channel id，保持原值
+MODIFY_CHANNEL_ID = True
+
+# True: 修改display-name
+# False: 不修改display-name，保持原值
+MODIFY_DISPLAY_NAME = True
 
 # ==================== 时区配置 ====================
 BEIJING_TZ = timezone(timedelta(hours=8))  # 北京时区 UTC+8
@@ -368,6 +379,83 @@ def sort_programmes_by_display(programmes: List[ET.Element],
     return sorted(programmes, key=programme_key)
 
 
+# ==================== 应用别名映射到频道 ====================
+def apply_alias_to_channel(channel: ET.Element, old_id: str, new_id: str) -> ET.Element:
+    """
+    应用别名映射到频道元素
+    
+    Args:
+        channel: 原始频道元素
+        old_id: 原始频道ID
+        new_id: 新频道ID
+        
+    Returns:
+        修改后的频道元素
+    """
+    # 创建新的频道元素
+    new_channel = ET.Element('channel', id=new_id)
+    
+    # 复制所有子元素
+    for child in channel:
+        # 如果是 display-name 标签且需要修改
+        if MODIFY_DISPLAY_NAME and child.tag == 'display-name' and child.text:
+            # 将 display-name 也替换为新 ID
+            new_child = ET.Element(child.tag)
+            new_child.text = new_id
+            new_child.tail = child.tail
+            # 复制属性
+            for key, value in child.attrib.items():
+                new_child.set(key, value)
+            new_channel.append(new_child)
+        else:
+            # 直接复制
+            new_child = copy.deepcopy(child)
+            new_channel.append(new_child)
+    
+    # 复制文本和属性
+    new_channel.text = channel.text
+    new_channel.tail = channel.tail
+    
+    # 复制除 id 外的其他属性
+    for key, value in channel.attrib.items():
+        if key != 'id':
+            new_channel.set(key, value)
+    
+    return new_channel
+
+
+# ==================== 应用别名映射到节目 ====================
+def apply_alias_to_programme(programme: ET.Element, new_channel_id: str) -> ET.Element:
+    """
+    应用别名映射到节目元素（只修改 channel 属性）
+    
+    Args:
+        programme: 原始节目元素
+        new_channel_id: 新的频道ID
+        
+    Returns:
+        修改后的节目元素
+    """
+    new_programme = ET.Element('programme')
+    
+    # 复制所有子元素
+    for child in programme:
+        new_programme.append(copy.deepcopy(child))
+    
+    # 复制文本和属性
+    new_programme.text = programme.text
+    new_programme.tail = programme.tail
+    
+    # 复制所有属性，但修改 channel
+    for key, value in programme.attrib.items():
+        if key == 'channel':
+            new_programme.set('channel', new_channel_id)
+        else:
+            new_programme.set(key, value)
+    
+    return new_programme
+
+
 # ==================== 配置解析 ====================
 def parse_source(source_file: str) -> Tuple[Dict[str, Dict], int]:
     """
@@ -387,7 +475,7 @@ def parse_source(source_file: str) -> Tuple[Dict[str, Dict], int]:
         时间范围表示总小时数（前后各一半）
         source_info 包含:
             - 'timezone': 指定的时区（可能为None，表示保持原时区）
-            - 'channels': 频道列表
+            - 'channels': 频道列表，每个元素为 (原ID, 新ID或None)
     """
     try:
         with open(source_file, 'r', encoding='utf-8') as source:
@@ -414,6 +502,12 @@ def parse_source(source_file: str) -> Tuple[Dict[str, Dict], int]:
                 print(f'⚠ 未指定时间范围，使用默认值: {DEFAULT_TIME_FRAME} 小时')
                 print(f'  (过去 {past_hours} 小时 → 未来 {future_hours} 小时)')
             
+            print()
+            
+            # 显示别名映射配置
+            print(f'📝 别名映射配置:')
+            print(f'   MODIFY_CHANNEL_ID: {MODIFY_CHANNEL_ID}')
+            print(f'   MODIFY_DISPLAY_NAME: {MODIFY_DISPLAY_NAME}')
             print()
             
             data_source: Dict[str, Dict] = {}
@@ -575,13 +669,8 @@ def process_epg_source(
     2. 如果指定了+8时区，保持原样不转换
     3. 如果没有指定 timezone，则保持原XML中的时区不变
     
-    Args:
-        file_path: EPG文件路径
-        source_info: 源信息，包含 'timezone' 和 'channels'
-        channel_dict: 频道字典
-        program_dict: 节目字典
-        start_utc: 起始时间（UTC）
-        total_hours: 总时间范围（小时），前后各一半
+    别名映射规则：
+    根据 MODIFY_CHANNEL_ID 和 MODIFY_DISPLAY_NAME 配置决定是否修改
     """
     channels_to_process = source_info['channels']
     specified_tz = source_info['timezone']  # 可能为None（表示保持原时区）
@@ -632,28 +721,35 @@ def process_epg_source(
     for channel in tree.findall('channel'):
         original_id = channel.attrib.get('id', '')
         if original_id in target_ids:
-            final_id = id_mapping.get(original_id, original_id)
+            # 确定最终使用的频道ID
+            if MODIFY_CHANNEL_ID and original_id in id_mapping:
+                final_id = id_mapping[original_id]
+            else:
+                final_id = original_id
             
+            # 如果最终ID不在字典中，添加
             if final_id not in channel_dict:
-                new_channel = ET.Element('channel', id=final_id)
-                for child in channel:
-                    new_channel.append(child)
-                new_channel.text = channel.text
-                new_channel.tail = channel.tail
-                for key, value in channel.attrib.items():
-                    if key != 'id':
-                        new_channel.set(key, value)
-                
-                channel_dict[final_id] = new_channel
-                channels_found += 1
-                if original_id != final_id:
-                    print(f'    📝 频道重命名: "{original_id}" → "{final_id}"')
+                if MODIFY_CHANNEL_ID and original_id in id_mapping:
+                    # 应用别名映射
+                    new_channel = apply_alias_to_channel(channel, original_id, final_id)
+                    channel_dict[final_id] = new_channel
+                    channels_found += 1
+                    if original_id != final_id:
+                        print(f'    📝 频道重命名: "{original_id}" → "{final_id}"')
+                else:
+                    # 不修改，直接复制
+                    new_channel = copy.deepcopy(channel)
+                    channel_dict[final_id] = new_channel
+                    channels_found += 1
     
     # 显示时区处理方式
     if specified_tz is not None:
         print(f'    🕐 时区转换: 指定时区 {specified_tz} → 北京时间 (+8)')
     else:
         print(f'    🕐 时区处理: 未指定时区，保持原XML时区不变')
+    
+    # 显示别名映射配置
+    print(f'    📝 别名映射: 修改ID={MODIFY_CHANNEL_ID}, 修改DisplayName={MODIFY_DISPLAY_NAME}')
     
     # 提取节目
     programs_found = 0
@@ -664,7 +760,11 @@ def process_epg_source(
         if original_channel in target_ids:
             programs_total += 1
             
-            final_channel = id_mapping.get(original_channel, original_channel)
+            # 确定最终使用的频道ID
+            if MODIFY_CHANNEL_ID and original_channel in id_mapping:
+                final_channel = id_mapping[original_channel]
+            else:
+                final_channel = original_channel
             
             # 获取原始时间
             original_start = programme.attrib.get('start', '')
@@ -694,22 +794,15 @@ def process_epg_source(
                 if filter_start < end_boundary and filter_stop > start_boundary:
                     key = (final_channel, final_start)
                     if key not in program_dict:
-                        new_programme = ET.Element('programme')
-                        for child in programme:
-                            new_programme.append(child)
-                        new_programme.text = programme.text
-                        new_programme.tail = programme.tail
+                        # 创建节目副本，修改channel属性
+                        new_programme = apply_alias_to_programme(programme, final_channel)
                         
-                        # 复制所有属性，但修改channel和时间
-                        for key_attr, value in programme.attrib.items():
-                            if key_attr == 'channel':
-                                new_programme.set('channel', final_channel)
-                            elif key_attr == 'start':
+                        # 修改时间属性
+                        for key_attr, value in new_programme.attrib.items():
+                            if key_attr == 'start':
                                 new_programme.set('start', final_start)
                             elif key_attr == 'stop':
                                 new_programme.set('stop', final_stop)
-                            else:
-                                new_programme.set(key_attr, value)
                         
                         program_dict[key] = new_programme
                         programs_found += 1
@@ -717,21 +810,14 @@ def process_epg_source(
                 # 时间格式异常，仍然添加
                 key = (final_channel, final_start)
                 if key not in program_dict:
-                    new_programme = ET.Element('programme')
-                    for child in programme:
-                        new_programme.append(child)
-                    new_programme.text = programme.text
-                    new_programme.tail = programme.tail
+                    new_programme = apply_alias_to_programme(programme, final_channel)
                     
-                    for key_attr, value in programme.attrib.items():
-                        if key_attr == 'channel':
-                            new_programme.set('channel', final_channel)
-                        elif key_attr == 'start':
+                    # 修改时间属性
+                    for key_attr, value in new_programme.attrib.items():
+                        if key_attr == 'start':
                             new_programme.set('start', final_start)
                         elif key_attr == 'stop':
                             new_programme.set('stop', final_stop)
-                        else:
-                            new_programme.set(key_attr, value)
                     
                     program_dict[key] = new_programme
                     programs_found += 1
@@ -739,7 +825,10 @@ def process_epg_source(
     # 输出统计
     found_ids = set()
     for old_id, _ in channels_to_process:
-        final_id = id_mapping.get(old_id, old_id)
+        if MODIFY_CHANNEL_ID and old_id in id_mapping:
+            final_id = id_mapping[old_id]
+        else:
+            final_id = old_id
         if final_id in channel_dict:
             found_ids.add(old_id)
     
@@ -759,7 +848,7 @@ def main() -> None:
     start_beijing = start_utc.astimezone(BEIJING_TZ)
     
     print_separator('=')
-    print('Guide Merger v2.0 (Flexible Timezone Support)')
+    print('Guide Merger v2.0 (Flexible Timezone & Alias Support)')
     print_separator('=')
     print(f'当前时间: {start_beijing.strftime("%Y-%m-%d %H:%M:%S")} (北京时间)')
     print(f'当前时间: {start_utc.strftime("%Y-%m-%d %H:%M:%S")} (UTC)')
@@ -779,6 +868,7 @@ def main() -> None:
     print('✓ 支持每个EPG源独立设置时区（可选，不设置则保持原时区）')
     print('✓ +8时区（北京时间）将被识别并保持原样不转换')
     print('✓ 支持前后双向时间范围（包含过去和未来的节目）')
+    print(f'✓ 别名映射: 修改ID={MODIFY_CHANNEL_ID}, 修改DisplayName={MODIFY_DISPLAY_NAME}')
     print()
     
     # 解析配置
@@ -799,8 +889,6 @@ def main() -> None:
         if info['timezone'] is not None:
             print(f'    时区: 指定非+8时区，将转换为北京时间')
         else:
-            # 需要检查是否是因为+8时区而设为None
-            # 从原始配置判断（这里简化处理）
             print(f'    时区: 保持原XML时区（可能是未指定或+8时区）')
         print(f'    频道数量: {len(info["channels"])}')
         mapping_count = sum(1 for _, new_id in info['channels'] if new_id)
@@ -835,7 +923,10 @@ def main() -> None:
         # 过滤已找到的频道
         channels_to_find = []
         for old_id, new_id in source_info['channels']:
-            final_id = new_id if new_id else old_id
+            if MODIFY_CHANNEL_ID and new_id:
+                final_id = new_id
+            else:
+                final_id = old_id
             if final_id not in channel_dict:
                 channels_to_find.append((old_id, new_id))
         
