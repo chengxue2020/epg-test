@@ -1039,6 +1039,8 @@ def main() -> None:
     print(f'结束时间: {end_beijing.strftime("%Y-%m-%d %H:%M:%S")} (北京时间)')
     print(f'总耗时: {duration:.2f} 秒')
     print(f'成功处理: {success_count}/{len(sources)} 个源')
+    # 新增：显示成功处理的频道数和节目数
+    print(f'成功处理: {len(channels_sorted)} 个频道，{len(programmes_sorted)} 条节目')
     print(f'输出文件: {OUTPUT_XML} 和 {OUTPUT_GZ}')
     print(f'时间范围: 过去 {past_hours} 小时 + 未来 {future_hours} 小时')
     print_separator('=')
