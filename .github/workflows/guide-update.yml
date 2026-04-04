@@ -2,13 +2,10 @@ name: Guide Update
 
 on:
   schedule:
-  # 每天执行3次（北京时间 0:45点,8:45点,16:45点）
-    - cron: '45 0,8,16 * * *'
-  workflow_dispatch:
-  push:
-    branches: [ main, master ]
-    paths:
-      - 'source_guide.txt'
+    # 每天 0:40, 8:40, 16:40 运行（UTC时间）
+    # 北京时间 = UTC+8，对应 8:40, 16:40, 0:40（次日）
+    - cron: '40 0,8,16 * * *'
+  workflow_dispatch:  # 允许手动触发
 
 jobs:
   update-guide:
@@ -32,9 +29,9 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install requests pypinyin
+        pip install requests pypinyin cloudscraper
     
-    - name: Run guide merger
+    - name: Run Guide merger
       run: |
         python guide_merger.py
     
@@ -54,7 +51,7 @@ jobs:
       if: steps.check_changes.outputs.changes == 'true'
       run: |
         git config --global user.name 'github-actions[bot]'
-        git config --global user.email '65702849+github-actions[bot]@users.noreply.github.com'
+        git config --global user.email '41898282+github-actions[bot]@users.noreply.github.com'
         git add guide.xml guide.xml.gz
-        git commit -m "Auto update guide data - $(date '+%Y-%m-%d %H:%M:%S')"
+        git commit -m "Auto update Guide data - $(date '+%Y-%m-%d %H:%M:%S')"
         git push origin HEAD:${GITHUB_REF#refs/heads/}
