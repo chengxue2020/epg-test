@@ -8,7 +8,7 @@ EPG Merger Script - 合并多个EPG源的频道节目信息
 支持每个EPG源单独设置时区转换（可选，不设置则保持原时区）
 支持前后双向时间范围（包含过去和未来的节目）
 可配置是否修改 channel id 和 display-name
-支持保存合并前的源EPG文件到Temp文件夹（每次运行前先清空Temp文件夹）
+支持保存合并前的源EPG文件到Temp文件夹（每次运行前先清空Temp文件夹，保留.gitkeep）
 """
 
 import requests
@@ -56,13 +56,8 @@ CHUNK_SIZE = 131072                      # 下载块大小（128KB）
 USE_CLOUDSCRAPER = True                  # 是否使用cloudscraper绕过CF
 
 # ==================== 别名映射配置 ====================
-# True: 修改channel id
-# False: 不修改channel id，保持原值
-MODIFY_CHANNEL_ID = True
-
-# True: 修改display-name
-# False: 不修改display-name，保持原值
-MODIFY_DISPLAY_NAME = True
+MODIFY_CHANNEL_ID = True      # True: 修改channel id, False: 不修改
+MODIFY_DISPLAY_NAME = True    # True: 修改display-name, False: 不修改
 
 # ==================== 时区配置 ====================
 BEIJING_TZ = timezone(timedelta(hours=8))  # 北京时区 UTC+8
@@ -114,11 +109,15 @@ def format_size(bytes_size: int) -> str:
 
 
 def clean_directory(dir_path: str) -> None:
-    """清空指定目录中的所有文件和子目录"""
+    """清空指定目录中的所有文件和子目录（保留.gitkeep文件）"""
     if not os.path.exists(dir_path):
         return
     
     for item in os.listdir(dir_path):
+        # 跳过 .gitkeep 文件
+        if item == '.gitkeep':
+            continue
+            
         item_path = os.path.join(dir_path, item)
         try:
             if os.path.isfile(item_path):
@@ -155,14 +154,6 @@ def generate_source_filename(url: str) -> str:
     1. github.io 格式：github-账号名-源文件名.xml
     2. githubusercontent.com 格式：github-账号名-源文件名.xml
     3. 其他格式：主站名-源文件名.xml
-    
-    相同URL始终生成相同文件名，新文件会覆盖旧文件
-    
-    Args:
-        url: EPG源URL
-        
-    Returns:
-        生成的文件名
     """
     parsed = urlparse(url)
     hostname = parsed.hostname or ''
@@ -202,17 +193,7 @@ def generate_source_filename(url: str) -> str:
 
 
 def save_source_epg(content: bytes, url: str, is_gz: bool = False) -> Optional[str]:
-    """
-    保存合并前的源EPG文件到Temp目录
-    
-    Args:
-        content: 文件内容（二进制）
-        url: 源URL
-        is_gz: 是否为gzip压缩文件
-        
-    Returns:
-        保存的文件路径，失败返回None
-    """
+    """保存合并前的源EPG文件到Temp目录"""
     os.makedirs(SAVE_SOURCE_DIR, exist_ok=True)
     
     filename = generate_source_filename(url)
@@ -843,9 +824,14 @@ def main() -> None:
     temp_dir = os.path.relpath(TEMP_DIR_NAME)
     os.makedirs(temp_dir, exist_ok=True)
     
-    # 清空 Temp 目录（保存源EPG文件的目录）
+    # 清空 Temp 目录（保存源EPG文件的目录），但保留 .gitkeep
     print(f'🧹 清空源文件目录 {SAVE_SOURCE_DIR}...')
     clean_directory(SAVE_SOURCE_DIR)
+    # 确保 .gitkeep 文件存在
+    gitkeep_path = os.path.join(SAVE_SOURCE_DIR, '.gitkeep')
+    if not os.path.exists(gitkeep_path):
+        with open(gitkeep_path, 'w') as f:
+            f.write('# This file keeps the directory in git\n')
     print('✓ 清空完成')
     print()
     
