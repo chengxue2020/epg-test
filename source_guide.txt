@@ -438,7 +438,7 @@ CBeebies	CBeebies(swepg2)
 CBeebies HD	CBeebies HD(swepg1)
 Cbeebies HD	Cbeebies HD(swepg2)
 CBeebies香港
-CCM	天映经典电影(印尼)
+CCM	天映经典电影_印尼
 Celebrities TV
 Celestial_Classic_Movies	Celestial Classic Movies(swepg)
 Celestial Movies
@@ -1797,7 +1797,7 @@ CHC 家庭影院	CHC家庭影院
 天美丽电视台
 天映经典菲律宾
 天映经典柬埔寨
-天映经典马来西亚
+天映经典马来西亚	天映经典电影_马来_英
 天映经典频道
 天映经典台新加坡
 天映经典新加坡
@@ -2323,8 +2323,8 @@ https://epg.pw/xmltv/epg_MY.xml
 3403	Cartoon Network HD
 4187	CBeebies(MY)
 3518	CCTV4(英)
-2280	CCM天映经典电影(马来非新)
-1298	Celestial Movies天映电影(马来非新)
+2280	天映经典电影_马来非新_英
+1298	天映电影_马来非新
 461591	CGTN Documentary(英)
 3906	CGTN HD
 2852	CNA HD
@@ -2468,8 +2468,8 @@ https://epg.pw/xmltv/epg_SG.xml
 535492	Cartoonito (HD)(新加坡)
 369816	CBeebies (HD)(新加坡)
 492826	CBeebies HD(新加坡)
-369819	CCM天映经典电影(非新非马)
-369730	CCM天映经典电影(新加坡非马)
+369819	天映经典电影_非新非马
+369730	天映经典电影_新加坡非马
 513276	Channel 8(国)
 513280	Channel U(国)
 492816	Channel 5(新加坡)
