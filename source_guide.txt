@@ -967,10 +967,8 @@ Studio Universal
 Studio Universal HD
 Sun_Life	Sun Life(swepg)
 Sun Music
-Sun_Music_HD	Sun Music HD
 Sun_News	Sun News(swepg)
 Sun TV
-SUN_TV_HD	SUN TV HD
 SUPER FREE (免费)	SUPER FREE
 SUPER Kids Channel
 SUPER Music (免费)	SUPER Music
@@ -1080,7 +1078,6 @@ WTO姐妹会
 WTO姐妹会-FastTV飞速看
 Yes娱乐
 Z_Cinema_HD	Z Cinema HD
-Z_Tamil_HD	Z Tamil HD
 ZAYAN	ZAYAN(swepg)
 Zee Bioskop
 Zee Cinema HD
