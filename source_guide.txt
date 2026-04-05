@@ -2323,7 +2323,7 @@ https://epg.pw/xmltv/epg_MY.xml
 3403	Cartoon Network HD
 4187	CBeebies(MY)
 3518	CCTV4(英)
-2280	Celestial Classic Movies
+2280	CCM天映经典电影(马来非新)
 1298	Celestial Movies天映电影(马来非新)
 461591	CGTN Documentary(英)
 3906	CGTN HD
@@ -2699,14 +2699,6 @@ https://epg.pw/xmltv/epg_SG.xml
 
 https://epg.pw/xmltv/epg_US.xml
 465049	365BLK(US)
-465145	3ABN(US)
-465061	3ABN Dare to Dream Network(US)
-464947	3ABN International Network(US)
-464914	3ABN Kids Network(US)
-464858	3ABN Latino Network(US)
-465121	3ABN Praise Him Music(US)
-465004	3ABN Proclaim Network(US)
-484436	3ABN Radio Network(US)
 465147	5 StarMAX HD East(US)
 484875	80s Sitcoms(US)
 464795	88 Films(US)
@@ -3096,55 +3088,6 @@ https://epg.pw/xmltv/epg_US.xml
 465089	National Geographic HD(US)
 464974	National Geographic HD (Pacific)(US)
 464884	National Geographic Wild HD(US)
-465767	NBA - Atlanta Hawks(US)
-465573	NBA - Boston Celtics(US)
-465803	NBA - Brooklyn Nets(US)
-465694	NBA - Charlotte Hornets(US)
-465543	NBA - Chicago Bulls(US)
-465620	NBA - Cleveland Cavaliers(US)
-465685	NBA - Dallas Mavericks(US)
-465673	NBA - Denver Nuggets(US)
-465564	NBA - Detroit Pistons(US)
-465785	NBA - Golden State Warriors(US)
-465662	NBA - Houston Rockets(US)
-465707	NBA - Indiana Pacers(US)
-465704	NBA - LA Clippers(US)
-465724	NBA - Los Angeles Lakers(US)
-465602	NBA - Memphis Grizzlies(US)
-465637	NBA - Miami Heat(US)
-465754	NBA - Milwaukee Bucks(US)
-465577	NBA - Minnesota Timberwolves(US)
-465535	NBA - New Orleans Pelicans(US)
-465702	NBA - New York Knicks(US)
-465585	NBA - Oklahoma City Thunder(US)
-465786	NBA - Orlando Magic(US)
-465692	NBA - Philadelphia 76ers(US)
-465740	NBA - Phoenix Suns(US)
-465708	NBA - Portland Trail Blazers(US)
-465652	NBA - Sacramento Kings(US)
-465762	NBA - San Antonio Spurs(US)
-465657	NBA - Toronto Raptors(US)
-465510	NBA - Utah Jazz(US)
-465750	NBA - Washington Wizards(US)
-465244	NBA League Pass 1(US)
-465141	NBA League Pass 10(US)
-465143	NBA League Pass 2(US)
-465338	NBA League Pass 2 HD(US)
-465408	NBA League Pass 3(US)
-465314	NBA League Pass 3 HD(US)
-465125	NBA League Pass 4(US)
-464924	NBA League Pass 4 HD(US)
-465137	NBA League Pass 5(US)
-464948	NBA League Pass 5 HD(US)
-465001	NBA League Pass 6(US)
-465343	NBA League Pass 6 HD(US)
-465016	NBA League Pass 7(US)
-464855	NBA League Pass 7 HD(US)
-465299	NBA League Pass 8(US)
-464848	NBA League Pass 8 HD(US)
-464801	NBA League Pass 9(US)
-464787	NBA League Pass 9 HD(US)
-464778	NBA League Pass/MLS Direct Kick HDTV(US)
 464912	NBA TV HD(US)
 501747	NBC Chicago (Live Stream)(US)
 492940	NBC Comedy Vault(US)
@@ -3602,7 +3545,6 @@ zdf-guardia-costiera	Zdf Guardia Costiera
 zdf-squadra-speciale-lipsia	Zdf Squadra Speciale Lipsia
 the-pet-collective-new	The Pet Collective New
 people-are-awesome-new	People Are Awesome New
-revry	Revry
 jukin-fail-army-new	Jukin Fail Army New
 top-barca-eng	Top Barca Eng
 fifa-plus-it-new	Fifa Plus (It) New
@@ -3616,7 +3558,6 @@ glory-kickboxing	Glory Kickboxing
 sport-italia	Sport Italia
 pfl-mma	Pfl Mma
 racer-international	Racer International
-automoto	Automoto
 golf-tv	Golf TV
 red-bull-tv-en	Red Bull TV En
 motorvision-tv	Motorvision TV
